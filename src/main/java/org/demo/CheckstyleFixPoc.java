@@ -27,11 +27,9 @@ public class CheckstyleFixPoc {
     private static final Logger logger = Logger.getLogger(CheckstyleFixPoc.class.getName());
 
     public static void main(String... args) throws Exception {
-        // Path to the existing test file
         Path testFile = Paths.get("src/main/java/org/demo/Test.java");
         logger.info("Using test file: " + testFile);
 
-        // Fix the file and overwrite the existing file with the changes
         fixLowercaseLongLiterals(testFile);
     }
 
