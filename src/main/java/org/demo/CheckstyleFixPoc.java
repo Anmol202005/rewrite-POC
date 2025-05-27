@@ -1,123 +1,37 @@
 package org.demo;
 
-import org.openrewrite.ExecutionContext;
-import org.openrewrite.InMemoryExecutionContext;
-import org.openrewrite.RecipeRun;
-import org.openrewrite.Result;
-import org.openrewrite.SourceFile;
-import org.openrewrite.internal.InMemoryLargeSourceSet;
-import org.openrewrite.java.JavaIsoVisitor;
-import org.openrewrite.java.JavaParser;
-import org.openrewrite.java.tree.J;
-
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
+import org.demo.checkstyle.fixer.LowercaseLongLiteralFixer;
+import org.demo.checkstyle.model.ViolationPosition;
+
+/**
+ * Main class for demonstrating Checkstyle violation fixing.
+ * This program fixes lowercase 'l' violations in long literals at specified positions.
+ */
 public class CheckstyleFixPoc {
+    private static final Logger LOGGER = Logger.getLogger(CheckstyleFixPoc.class.getName());
+    private static final String DEFAULT_TEST_FILE = "src/main/java/org/demo/Test.java";
 
-    private static final Logger logger = Logger.getLogger(CheckstyleFixPoc.class.getName());
-
-    public static void main(String... args) throws Exception {
-        Path testFile = Paths.get("src/main/java/org/demo/Test.java");
-        logger.info("Using test file: " + testFile);
-
-        fixLowercaseLongLiterals(testFile);
-    }
-
-    public static void fixLowercaseLongLiterals(Path filePath) {
-        boolean fixed = false;
-
+    public static void main(String[] args) {
         try {
-            ExecutionContext ctx = new InMemoryExecutionContext(Throwable::printStackTrace);
-            List<J.CompilationUnit> cus = JavaParser.fromJavaVersion().build()
-                .parse(Collections.singletonList(filePath), null, ctx)
-                .filter(sf -> sf instanceof J.CompilationUnit)
-                .map(sf -> (J.CompilationUnit) sf)
-                .collect(Collectors.toList());
+            Path testFile = Paths.get(DEFAULT_TEST_FILE);
+            LOGGER.info("Found test file at: " + testFile.toAbsolutePath());
 
-            if (!cus.isEmpty()) {
+            Set<ViolationPosition> violations = new HashSet<>();
+            violations.add(new ViolationPosition(6, 50));
+            violations.add(new ViolationPosition(13, 25));
 
-                Set<String> toReplace = new HashSet<>();
-                for (J.CompilationUnit cu : cus) {
-                    new JavaIsoVisitor<ExecutionContext>() {
-                        @Override
-                        public J.Literal visitLiteral(J.Literal literal, ExecutionContext ctx) {
-                            String valueSource = literal.getValueSource();
-                            if (valueSource != null && valueSource.matches("\\d+l")) {
-                                toReplace.add(valueSource);
-                            }
-                            return super.visitLiteral(literal, ctx);
-                        }
-                    }.visit(cu, ctx);
-                }
+            LowercaseLongLiteralFixer.fixLowercaseLongLiterals(testFile, violations);
 
-                if (!toReplace.isEmpty()) {
-                    List<SourceFile> sourceFiles = new ArrayList<>(cus);
-                    InMemoryLargeSourceSet sourceSet = new InMemoryLargeSourceSet(sourceFiles);
-
-                    RecipeRun run = new LiteralFixer(toReplace).run(sourceSet, ctx);
-                    List<Result> results = run.getChangeset().getAllResults();
-                    if (!results.isEmpty()) {
-                        // Overwrite the file with the fixed content
-                        Files.writeString(filePath, results.get(0).getAfter().printAll());
-                        fixed = true;
-                    }
-                }
-            }
         } catch (Exception e) {
-            logger.severe("Error occurred while fixing lowercase long literals: " + e.getMessage());
-        } finally {
-            if (fixed) {
-                logger.info("File successfully updated with fixes.");
-            } else {
-                logger.info("No violations fixed.");
-            }
-        }
-    }
-
-    public static class LiteralFixer extends org.openrewrite.Recipe {
-        private static final Pattern L_$ = Pattern.compile("l$");
-        private final Set<String> targets;
-
-        public LiteralFixer(Set<String> targets) {
-            this.targets = targets;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return "Fix lowercase 'l' long literals";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Replaces lowercase 'l' with uppercase 'L' in long literals.";
-        }
-
-        @Override
-        public JavaIsoVisitor<ExecutionContext> getVisitor() {
-            return new JavaIsoVisitor<>() {
-                @Override
-                public J.Literal visitLiteral(J.Literal literal, ExecutionContext ctx) {
-                    J.Literal l = super.visitLiteral(literal, ctx);
-                    String valueSource = l.getValueSource();
-                    J.Literal result = l;  // Default to the original literal
-
-                    if (valueSource != null && targets.contains(valueSource)) {
-                        result = l.withValueSource(L_$.matcher(valueSource).replaceAll("L"));
-                    }
-
-                    return result;
-                }
-            };
+            LOGGER.log(Level.SEVERE, "Error occurred while running CheckstyleFixPoc", e);
+            System.exit(1);
         }
     }
 }

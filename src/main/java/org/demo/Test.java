@@ -11,7 +11,7 @@ public class Test {
     // Method with long literals
     public void testMethod() {
         long value1 = 42l; // Violation: lowercase 'l'
-        long value2 = 123L; // Correct: uppercase 'L'
+        long value2 = 123l; // Correct: uppercase 'L'
     }
 
     public static void main(String[] args) {

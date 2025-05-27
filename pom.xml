@@ -46,7 +46,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
-                    <mainClass>org.checkstyle.fixes.CheckstyleFixPoc</mainClass>
+                    <mainClass>org.demo.CheckstyleFixPoc</mainClass>
                 </configuration>
             </plugin>
         </plugins>
